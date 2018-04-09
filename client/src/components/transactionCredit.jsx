@@ -48,6 +48,7 @@ class TransactionCredit extends React.Component {
           sale_date: results.data.sale_date,
           sale_discount: results.data.sale_discount,
           sale_type: results.data.sale_type,
+          transactionItems: this.props.location.state.transactionItems,
         },
       );
       this.props.history.push('/salesScreen');
@@ -65,11 +66,11 @@ class TransactionCredit extends React.Component {
     let renderThis = <div></div>;
     if (this.state.sigConfirm === false) {
       renderThis =
-      <div>
+      <div className="transactionCreditConfirmed animated fadeIn">
         <h1>Total Sale</h1>
         <h1><i className="fas fa-dollar-sign" /> {this.props.location.state.total}</h1>
         <SignatureCanvas
-          penColor="rgb(52, 158, 255)"
+          penColor="#5959e6"
           canvasProps={{ width: 500, height: 100, className: 'sigCanvas' }}
           ref={(ref) => { this.sigCanvas = ref; }}
         />

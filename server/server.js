@@ -86,7 +86,6 @@ app.post('/send/receipt', (req, res) => {
   let sendPromise = new aws.SES({apiVersion: '2010-12-01'}).sendEmail(emailParams).promise();
   sendPromise.then(
     function(data) {
-      console.log(data.MessageId);
       res.send();
     }).catch(
       function(err) {
@@ -143,7 +142,6 @@ app.post('/delete/employee', (req, res) => {
         employee_id: req.body.employee_id
       }
     }).then((list) => {
-      console.log('this is list', list)
       if (list.length > 0) {
         list.destroy();
       }
@@ -153,7 +151,6 @@ app.post('/delete/employee', (req, res) => {
           employee_id: req.body.employee_id
         }
       }).then((sales) => {
-        console.log('this is sales', sales)
         if (sales.length > 0) {
           sales.destroy();
         }
@@ -168,7 +165,6 @@ app.post('/create/item', upload.any(), (req, res) => {
   db.Item.create({
     item_name: req.body.item_name,
     item_price: req.body.item_price,
-    item_image: req.files[0].location,
     item_ingredients: JSON.stringify(req.body.item_ingredients),
     item_category: req.body.item_category
   }).then(() => {
@@ -235,6 +231,7 @@ app.post('/completed/transaction', (req, res) => {
         },
       })
         .then((result) => {
+          console.log('this is results!!!!!!!!!!!!!!!!! alalalalalala', result)
           return result[0].unit_cost * ingredient.ingredient_amount;
         });
     }))
@@ -258,13 +255,11 @@ app.post('/completed/transaction', (req, res) => {
         db.Ingredient.findAll()
         .then((ing) => {
           ingredientsList = JSON.parse(JSON.stringify(ing));
-          console.log('this is ingredientList and req.body.transactionItems', req.body.transactionItems,'\nawfawefawfawfawf\nwawfawef', ingredientsList)
           req.body.transactionItems.forEach((item) => {
             let ingList = JSON.parse(item.item_ingredients);
             while (typeof ingList === 'string') {
               let ingList = JSON.parse(ingList);
             }
-            console.log('\nthis is ingList\n', ingList)
             ingList.forEach((ing) => {
               for (let i = 0; i < ingredientsList.length; i += 1) {
                 if (ingredientsList[i].id === ing.ingredient_id) {
@@ -281,7 +276,6 @@ app.post('/completed/transaction', (req, res) => {
             })
           })
           ingredientsList.forEach((ing) => {
-            console.log('this is ing before update', ing)
             db.Ingredient.update({
               ingredient_left: ing.ingredient_left
             },{
@@ -298,7 +292,6 @@ app.post('/completed/transaction', (req, res) => {
 });
 
 app.post('/clockout', (req, res) => {
-  console.log('this is running', req.session.employee)
   db.Timesheet.update({
     check_out: moment().format('MM/DD/YYYY, hh:mm:ss a'),
   }, {
@@ -318,7 +311,6 @@ app.post('/clockout', (req, res) => {
 
 
 app.post('/newEmployee', upload.any(), (req, res) => {
-  console.log('this is req.files', req.files)
   db.Employee.create({
     employee_id: req.body.newEmployeeId,
     employee_name: req.body.newEmployeeName,
@@ -387,7 +379,6 @@ app.post('/addIngredient', (req, res) => {
 });
 
 app.post('/removeIngredient', (req, res) => {
-  console.log('req.body on remove ingredients', req.body.ingredient);
   db.Ingredient.destroy({
     where: {
       ingredient_name: req.body.ingredient,
@@ -515,7 +506,7 @@ app.get('/fetch/currentInventory', (req, res) => {
 
 app.get('/fetch/inventory', (req, res) => {
   db.Ingredient.findAll({
-    attributes: ['ingredient_name', 'order_number', 'order_date', 'ingredient_left', 'ingredient_initial', 'ingredient_expire'],
+    attributes: ['id', 'ingredient_name', 'order_number', 'order_date', 'ingredient_left', 'ingredient_initial', 'ingredient_expire'],
   }).then((data) => {
     res.send(data);
   }).catch((error) => {
@@ -613,7 +604,6 @@ app.get('/fetch/allitems', (req, res) => {
 
 app.get('/fetch/employee', (req, res) => {
   let employee;
-  console.log('hello')
   db.Employee.findAll({
     where: {
       employee_id: req.query.PIN,
@@ -623,10 +613,8 @@ app.get('/fetch/employee', (req, res) => {
       if (data.length === 0) {
         res.status(404).send();
       } else {
-        console.log('this is data', data)
         employee = JSON.parse(JSON.stringify(data));
-        employee = employee[0]
-        console.log('this is employee', employee)
+        employee = employee[0];
         db.Timesheet.findOne({
           where: {
             employee_id: req.query.PIN,
@@ -636,7 +624,6 @@ app.get('/fetch/employee', (req, res) => {
           // if (!emp) {
             req.session.regenerate(() => {
               req.session.employee = req.query.PIN;
-              console.log('this is req.session', req.session.employee)
               res.send([employee])
               db.Timesheet.create({
                 employee_id: req.query.PIN,

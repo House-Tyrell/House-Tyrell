@@ -33,7 +33,21 @@ export default class OrderKitchenView extends React.Component {
       <div className={this.state.classes} onClick={() => this.props.orderUp(this.props.number)}>
         <div>{this.state.age}</div>
         <div className="kitchenOrderNumber">{this.props.number}</div>
-        {this.props.foods.map(food => <div>{food}</div>)}
+        {this.props.foods.map(food =>
+          <div>
+            <div>{food[0]}</div>
+            <div>
+            {food[1].length > 0 &&
+              <ul>
+              {food[1].map(exclude =>
+                <li style={{ textDecoration: 'line-through' }}>
+                  {exclude}
+                </li>
+              )}
+                </ul>
+            }</div>
+          </div>
+        )}
       </div>
     );
   }

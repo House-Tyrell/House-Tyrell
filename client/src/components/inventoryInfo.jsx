@@ -1,4 +1,5 @@
 import React from 'react';
+import { withRouter } from 'react-router';
 import Navigation from './managerNav.jsx';
 import InventoryUsagePie from './inventoryUsagePie.jsx';
 import InventoryCostLine from './inventoryCostLine.jsx';
@@ -36,6 +37,7 @@ class InventoryInfo extends React.Component {
       showAddInventory: true,
       ingredientDropDown: [],
       ingredientToRemove: '',
+      alertItems: '',
     };
     this.getInventory1 = this.getInventory1.bind(this);
     this.getInventory2 = this.getInventory2.bind(this);
@@ -56,6 +58,10 @@ class InventoryInfo extends React.Component {
     this.showRemoveInventory = this.showRemoveInventory.bind(this);
     this.prepareIngredientsDropDown = this.prepareIngredientsDropDown.bind(this);
     this.handleRemoveIngredient = this.handleRemoveIngredient.bind(this);
+    this.getIngredientID = this.getIngredientID.bind(this);
+    this.containIngredient = this.containIngredient.bind(this);
+    this.openModal = this.openModal.bind(this);
+    this.closeModal = this.closeModal.bind(this);
   }
 
   /* Inventory Usage Functions */
@@ -77,7 +83,7 @@ class InventoryInfo extends React.Component {
           left: result1[1] + result2[1],
           ingredientDropDown: this.prepareIngredientsDropDown(data2.data),
         }, () => {
-          console.log('data1', data1.data);
+          console.log('Ingredients Data', data2.data);
           console.log('ingredients data', this.state.ingredientDropDown);
         });
     }));
@@ -190,7 +196,7 @@ class InventoryInfo extends React.Component {
   getWaste() {
     axios.get('/fetch/waste')
       .then(data => {
-          console.log('waste data', data.data);
+          // console.log('waste data', data.data);
           var result = this.calculateWaste(data.data);
           this.setState({
             wasteData: data.data,
@@ -276,12 +282,55 @@ class InventoryInfo extends React.Component {
   handleRemoveIngredient(event) {
     event.preventDefault();
     const item = this.state.ingredientToRemove.label;
-    axios.post('/removeIngredient', {
-      ingredient: item,
+    axios.get('/fetch/items')
+      .then((menuItems) => {
+        var menuitems = [];
+        menuItems.data.map((menuItem) => {
+          if (this.containIngredient(menuItem, this.getIngredientID(item))) {
+            menuitems.push(menuItem.item_name);
+          }
+        });
+        this.setState({
+          alertItems: menuitems.join(', '),
+        });
+        const isinMenu = menuItems.data.some((menuItem) => {
+          return this.containIngredient(menuItem, this.getIngredientID(item));
+        });
+        if (isinMenu) {
+          this.openModal('alertRemovalModal');
+        } else {
+          axios.post('/removeIngredient', {
+            ingredient: item,
+          })
+            .then(this.setState({
+              ingredientToRemove: '',
+            }));
+        }
+      });
+  }
+
+  getIngredientID(target) {
+    var ingredients = this.state.usageData2;
+    for (var i = 0; i < ingredients.length; i++) {
+      if (ingredients[i].ingredient_name === target) {
+        return ingredients[i].id;
+      }
+    }
+  }
+
+  containIngredient(menuItem, targetIngID) {
+    var ingredients = JSON.parse(menuItem.item_ingredients);
+    return ingredients.some((ing) => {
+      return ing.ingredient_id === targetIngID
     })
-      .then(this.setState({
-        ingredientToRemove: '',
-      }));
+  }
+
+  openModal(modal) {
+    document.getElementById(modal).style.display = 'block';
+  }
+
+  closeModal(modal) {
+    document.getElementById(modal).style.display = 'none';
   }
 
   render() {
@@ -306,14 +355,16 @@ class InventoryInfo extends React.Component {
             )}
           </div>
           
-          <div className="sales-graph-options" style={{ color: 'black' }}>
-            <Select
-              options={[{ value: 'usage', label: 'Usage' }, { value: 'cost', label: 'Cost' }, { value: 'waste', label: 'Waste' }]}
-              placeholder="Select a graph"
-              onChange={value => this.setState({ viewType: value.value })}
-            />
-            <button onClick={this.showAddInventory}>Add An Ingredient</button>
-            <button onClick={this.showRemoveInventory}>Remove An Ingredient</button>
+          <div className="inventory-graph-options" style={{ color: 'black' }}>
+            <div>
+              <Select
+                options={[{ value: 'usage', label: 'Usage' }, { value: 'cost', label: 'Cost' }, { value: 'waste', label: 'Waste' }]}
+                placeholder="Select a graph"
+                onChange={value => this.setState({ viewType: value.value })}
+              />
+            </div>
+            <div><button onClick={this.showAddInventory} style={{ backgroundColor: '#5959e6', paddingLeft: '11%', paddingRight: '11%' }}>Add An Ingredient</button></div>
+            <div><button onClick={this.showRemoveInventory} style={{ backgroundColor: '#e65959', paddingLeft: '6%', paddingRight: '6%' }}>Remove An Ingredient</button></div>
           </div>
 
           { (showAdd === true) ? (
@@ -336,15 +387,27 @@ class InventoryInfo extends React.Component {
           </div>
           ) : ( 
             <div className="removeInventoryForm">
-              <Select
-                options={this.state.ingredientDropDown}
-                placeholder="Select an ingredient"
-                value={this.state.ingredientToRemove}
-                onChange={value => this.setState({ ingredientToRemove: value })}
-              />
-              <button onClick={this.handleRemoveIngredient}>Remove</button>
+              <div className="removeInventoryForm-dropdown">
+                <Select
+                  options={this.state.ingredientDropDown}
+                  placeholder="Select an ingredient"
+                  value={this.state.ingredientToRemove}
+                  onChange={value => this.setState({ ingredientToRemove: value })}
+                />
+              </div>
+              <span onClick={this.handleRemoveIngredient}><i class="fas fa-minus-circle" /></span>
             </div>) 
           }
+          <div id="alertRemovalModal" className="alertRemovalModal animated fadeIn">
+            <div className="alert-removal-modal-header">
+            <div className="alert-removal-close" onClick={() => this.closeModal('alertRemovalModal')}>&times;</div>
+            </div>
+            <div className="alert-removal-modal-body">This ingredient cannot be removed. It is currently used in {this.state.alertItems}. You may change your menu items first.</div>
+            <div className="alert-removal-modal-footer">
+              <button onClick={() => this.props.history.push("/managercustomize")} style={{ color: '#5959e6' }}>Change Menu Items</button>
+              <button onClick={() => this.closeModal('alertRemovalModal')} style={{ color: '#e65959' }}>Cancel</button>
+            </div>
+          </div>
 
           <div className="graphTable">
             {type === 'usage' ? (      
@@ -365,4 +428,4 @@ class InventoryInfo extends React.Component {
   }
 }
 
-export default InventoryInfo;
+export default withRouter(InventoryInfo);
